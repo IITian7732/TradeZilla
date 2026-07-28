@@ -1138,7 +1138,7 @@ useEffect(() => {
           const pivotData = pivotCalc.calculate(candles);
           
           Object.keys(pivotSettings.levels).forEach(level => {
-             const setting = pivotSettings.levels[level];
+             const setting = pivotSettings.levels[level as keyof typeof pivotSettings.levels];
              if (!setting.show) return;
              
              // A level key can be 'P' or 'S1/R1' etc.
@@ -1199,7 +1199,7 @@ useEffect(() => {
 
           // We don't have a base series for PIVOT POINTS, so we skip setting seriesRef.current[id]
           // But we want it to be considered "created", so we can set a dummy or just ignore it.
-          seriesRef.current[id] = { applyOptions: (opt) => {} };
+          seriesRef.current[id] = { applyOptions: (opt: any) => {} };
         }
 
         if (series) {
@@ -1409,7 +1409,7 @@ useEffect(() => {
         const pivotData = pivotCalc.calculate(candles);
         
         Object.keys(pivotSettings.levels).forEach(level => {
-           const setting = pivotSettings.levels[level];
+           const setting = pivotSettings.levels[level as keyof typeof pivotSettings.levels];
            if (!setting.show) return;
            
            const subLevels = level.split('/');
