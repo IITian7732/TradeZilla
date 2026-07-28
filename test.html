@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+    <div id="container"></div>
+    <script>
+        const chart = LightweightCharts.createChart(document.getElementById('container'));
+        const line = chart.addLineSeries({ priceScaleId: 'rsi' });
+        line.setData([{time: '2020-01-01', value: 100}]);
+        chart.priceScale('rsi').applyOptions({ visible: true });
+        console.log("Success");
+    </script>
+</body>
+</html>

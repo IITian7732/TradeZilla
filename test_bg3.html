@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+  <div id="tvchart" style="width: 600px; height: 400px;"></div>
+  <script>
+    const chart = LightweightCharts.createChart(document.getElementById('tvchart'), {
+      width: 600, height: 400
+    });
+    
+    // Candlesticks
+    const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {});
+    candleSeries.setData([
+      { time: '2018-12-22', open: 75, high: 82, low: 36, close: 45 },
+      { time: '2018-12-23', open: 45, high: 53, low: 45, close: 48 },
+    ]);
+    
+    chart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0.3 } });
+
+    // RSI Pane Background
+    const paneBg = chart.addSeries(LightweightCharts.BaselineSeries, {
+      priceScaleId: 'RSI_1',
+      baseValue: { type: 'price', price: 0 },
+      topFillColor1: 'rgba(255, 0, 0, 0.5)',
+      topFillColor2: 'rgba(255, 0, 0, 0.5)',
+      bottomFillColor1: 'rgba(255, 0, 0, 0.5)',
+      bottomFillColor2: 'rgba(255, 0, 0, 0.5)',
+      topLineColor: 'transparent',
+      bottomLineColor: 'transparent',
+      lineWidth: 1,
+      crosshairMarkerVisible: false,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      autoscaleInfoProvider: () => null
+    });
+    paneBg.setData([
+      { time: '2018-12-22', value: 100 },
+      { time: '2018-12-23', value: 100 },
+    ]);
+
+    // RSI Line
+    const rsiLine = chart.addSeries(LightweightCharts.LineSeries, { priceScaleId: 'RSI_1', color: 'blue' });
+    rsiLine.setData([
+      { time: '2018-12-22', value: 50 },
+      { time: '2018-12-23', value: 45 },
+    ]);
+
+    chart.priceScale('RSI_1').applyOptions({ scaleMargins: { top: 0.75, bottom: 0 } });
+  </script>
+</body>
+</html>
