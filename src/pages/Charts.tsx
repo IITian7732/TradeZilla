@@ -754,7 +754,7 @@ useEffect(() => {
   let isMounted = true;
 
   const updateIndicators = async () => {
-    const { LineSeries, HistogramSeries, BaselineSeries, AreaSeries } = await import('lightweight-charts');
+    const { LineSeries, HistogramSeries, BaselineSeries, AreaSeries, createSeriesMarkers } = await import('lightweight-charts');
     if (!isMounted || !chartRef.current) return;
     const chart = chartRef.current as any;
     
@@ -1133,14 +1133,22 @@ useEffect(() => {
           const vwapData = vwapCalc.calculate(candles);
           series.setData(candles.map((c: any, i: number) => ({ time: timeFormat(c), value: vwapData[i] || 0 })));
         } else if (type === 'PIVOT POINTS') {
+          // Always delete stale pivot sub-series so timeframe changes recreate them fresh
+          Object.keys(seriesRef.current).forEach(sid => {
+            if (sid !== id && sid.startsWith(id + '-')) {
+              try { chart.removeSeries(seriesRef.current[sid]); } catch(e) {}
+              delete seriesRef.current[sid];
+            }
+          });
+
           const effectivePivotsBack = pivotSettings.showHistoricalPivots ? pivotSettings.numberPivotsBack : 0;
           const pivotCalc = new PivotCalculator(pivotSettings.type, pivotSettings.timeframe, effectivePivotsBack);
           const pivotData = pivotCalc.calculate(candles);
-          
+
           Object.keys(pivotSettings.levels).forEach(level => {
              const setting = pivotSettings.levels[level as keyof typeof pivotSettings.levels];
              if (!setting.show) return;
-             
+
              // A level key can be 'P' or 'S1/R1' etc.
              const subLevels = level.split('/');
              subLevels.forEach(subLevel => {
@@ -1148,57 +1156,69 @@ useEffect(() => {
                     color: setting.color,
                     lineWidth: setting.thickness,
                     lineStyle: 0,
-                    lineType: 0, // Simple line (horizontal because values are constant)
+                    lineType: 0,
                     crosshairMarkerVisible: false,
                     visible: true,
-                    lastValueVisible: pivotSettings.showLabels,
-                    priceLineVisible: pivotSettings.showLabels,
-                    title: pivotSettings.showLabels ? subLevel : '',
+                    lastValueVisible: false,  // We draw our own labels via markers
+                    priceLineVisible: false,
                  });
-                 
+
                  const data: any[] = [];
-                 const markers: any[] = [];
+                 const labelMarkers: any[] = [];
                  let lastPeriodIndex = -1;
-                 
+                 let periodStartVal: number | null = null;
+                 let periodStartTime: any = null;
+
                  for (let i = 0; i < candles.length; i++) {
                      if (!pivotData[i]) continue;
                      const val = pivotData[i][subLevel];
                      if (val === undefined || Number.isNaN(val)) continue;
-                     
+
                      const isNewPeriod = pivotData[i].periodIndex !== lastPeriodIndex;
-                     
-                     data.push({
-                         time: candles[i].time,
-                         value: val,
-                         color: isNewPeriod ? 'rgba(0,0,0,0)' : setting.color
-                     });
-                     
-                     if (isNewPeriod && pivotSettings.showLabels) {
-                         markers.push({
-                             time: candles[i].time,
-                             position: 'inBar',
-                             color: setting.color,
-                             shape: 'circle',
-                             text: ' ' + subLevel,
-                             size: 1
-                         });
+
+                     if (isNewPeriod && lastPeriodIndex !== -1) {
+                       // Insert a transparent gap point to visually break the line between periods
+                       data.push({ time: candles[i].time, value: val, color: 'rgba(0,0,0,0)' });
+                     } else {
+                       data.push({ time: candles[i].time, value: val, color: setting.color });
                      }
-                     
+
+                     if (isNewPeriod) {
+                       periodStartVal = val;
+                       periodStartTime = candles[i].time;
+                       // Store label marker for the START of each new period
+                       if (pivotSettings.showLabels) {
+                         labelMarkers.push({
+                           time: candles[i].time,
+                           position: 'price',
+                           price: val,
+                           color: setting.color,
+                           shape: 'circle',
+                           size: 0,
+                           text: subLevel,
+                         });
+                       }
+                     }
+
                      lastPeriodIndex = pivotData[i].periodIndex;
                  }
-                 
+
                  levelSeries.setData(data);
-                 if (markers.length > 0) {
+
+                 // Use createSeriesMarkers (v5 API) to add inline price-positioned labels
+                 if (labelMarkers.length > 0 && pivotSettings.showLabels) {
                      try {
-                         levelSeries.setMarkers(markers);
-                     } catch(e) {}
+                         createSeriesMarkers(levelSeries, labelMarkers);
+                     } catch(e) {
+                         console.warn('Pivot label markers error:', e);
+                     }
                  }
+
                  seriesRef.current[id + '-' + subLevel] = levelSeries;
              });
           });
 
-          // We don't have a base series for PIVOT POINTS, so we skip setting seriesRef.current[id]
-          // But we want it to be considered "created", so we can set a dummy or just ignore it.
+          // Dummy entry so the indicator is considered "created"
           seriesRef.current[id] = { applyOptions: (opt: any) => {} };
         }
 
@@ -1403,63 +1423,8 @@ useEffect(() => {
            }
         });
       }
-      if (id.startsWith('PIVOT POINTS')) {
-        const effectivePivotsBack = pivotSettings.showHistoricalPivots ? pivotSettings.numberPivotsBack : 0;
-        const pivotCalc = new PivotCalculator(pivotSettings.type, pivotSettings.timeframe, effectivePivotsBack);
-        const pivotData = pivotCalc.calculate(candles);
-        
-        Object.keys(pivotSettings.levels).forEach(level => {
-           const setting = pivotSettings.levels[level as keyof typeof pivotSettings.levels];
-           if (!setting.show) return;
-           
-           const subLevels = level.split('/');
-           subLevels.forEach(subLevel => {
-               const series = seriesRef.current[id + '-' + subLevel];
-               if (series) {
-                   const data: any[] = [];
-                   const markers: any[] = [];
-                   let lastPeriodIndex = -1;
-                   
-                   for (let i = 0; i < candles.length; i++) {
-                       if (!pivotData[i]) continue;
-                       const val = pivotData[i][subLevel];
-                       if (val === undefined || Number.isNaN(val)) continue;
-                       
-                       const isNewPeriod = pivotData[i].periodIndex !== lastPeriodIndex;
-                       
-                       // For daily chart with daily anchors, every candle might be a new period.
-                       // We don't want transparent lines if the period is only 1 candle long!
-                       // But wait, if we are recalculating, we use the same logic.
-                       data.push({
-                           time: candles[i].time,
-                           value: val,
-                           color: isNewPeriod ? 'rgba(0,0,0,0)' : setting.color
-                       });
-                       
-                       if (isNewPeriod && pivotSettings.showLabels) {
-                           markers.push({
-                               time: candles[i].time,
-                               position: 'inBar',
-                               color: setting.color,
-                               shape: 'circle',
-                               text: ' ' + subLevel, // Add space so text isn't right on top of dot
-                               size: 1
-                           });
-                       }
-                       
-                       lastPeriodIndex = pivotData[i].periodIndex;
-                   }
-                   
-                   series.setData(data);
-                   if (markers.length > 0) {
-                       try {
-                           series.setMarkers(markers);
-                       } catch(e) {}
-                   }
-               }
-           });
-        });
-      }
+      // Pivot series are always fully recreated by updateIndicators when candles change.
+      // No in-place update needed here — skip PIVOT POINTS.
     });
   }, [candleSettings, volumeSettings, candles, atrSettings, vwapSettings, pivotSettings]);
 
