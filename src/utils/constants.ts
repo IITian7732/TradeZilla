@@ -29,8 +29,8 @@ export const MARKET_HOURS = {
   OPEN_MINUTE_IST: 15,
   CLOSE_HOUR_IST: 15,
   CLOSE_MINUTE_IST: 30,
-  // Market is open Mon–Sat
-  OPEN_DAYS: [1, 2, 3, 4, 5, 6], // 0=Sun, 1=Mon, ..., 6=Sat
+  // Market is open Mon–Fri
+  OPEN_DAYS: [1, 2, 3, 4, 5], // 0=Sun, 1=Mon, ..., 5=Fri
 } as const;
 
 // Initial paper trading balance

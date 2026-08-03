@@ -2,7 +2,7 @@
 // SINGLE source of truth for portfolio-derived numbers (current value, P&L).
 // Dashboard, Portfolio page, and Trade screen all import this hook.
 // Do NOT recompute portfolio metrics independently in any page.
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/authStore';
 import { calcUnrealisedPnL, calcPnLPct } from '../utils/calculations';
@@ -79,4 +79,41 @@ export function usePortfolio() {
     totalPortfolioValue,
     balance: account?.balance ?? (USE_MOCK ? MOCK_ACCOUNT.balance : 0),
   };
+}
+
+export function useUpdateHolding() {
+  const queryClient = useQueryClient();
+
+  const updateTP = useMutation({
+    mutationFn: async ({ symbol, tp }: { symbol: string; tp?: number }) => {
+      if (USE_MOCK) {
+        const holding = MOCK_HOLDINGS.find(h => h.symbol === symbol);
+        if (holding) {
+          holding.tp = tp;
+        }
+        return;
+      }
+      // Assuming no supabase implementation for now since TP/SL is frontend mock feature
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['holdings'] });
+    }
+  });
+
+  const updateSL = useMutation({
+    mutationFn: async ({ symbol, sl }: { symbol: string; sl?: number }) => {
+      if (USE_MOCK) {
+        const holding = MOCK_HOLDINGS.find(h => h.symbol === symbol);
+        if (holding) {
+          holding.sl = sl;
+        }
+        return;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['holdings'] });
+    }
+  });
+
+  return { updateTP, updateSL };
 }

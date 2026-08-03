@@ -117,7 +117,7 @@ export default function Watchlist() {
                   borderBottom: i < watchlistItems.length - 1 ? '1px solid #E2E8F0' : 'none',
                 }}>
                   <button
-                    onClick={() => { setSelectedSymbol(item.symbol, item.exchange as 'NSE' | 'BSE'); navigate('/trade'); }}
+                    onClick={() => { setSelectedSymbol(item.symbol, item.exchange as 'NSE' | 'BSE'); navigate('/charts'); }}
                     style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                     <div style={{
                       width: 40, height: 40, borderRadius: 12, flexShrink: 0,
@@ -142,12 +142,20 @@ export default function Watchlist() {
                       )}
                     </div>
                   </button>
-                  <button
-                    onClick={() => removeItem.mutate(item.id)}
-                    style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 6, display: 'flex', flexShrink: 0 }}
-                    aria-label={`Remove ${item.symbol} from watchlist`}>
-                    <Trash2 size={16} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedSymbol(item.symbol, item.exchange as 'NSE' | 'BSE'); navigate('/trade'); }}
+                      style={{ background: '#EFF6FF', border: 'none', color: '#2563EB', cursor: 'pointer', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, display: 'flex', flexShrink: 0 }}
+                    >
+                      Trade
+                    </button>
+                    <button
+                      onClick={() => removeItem.mutate(item.id)}
+                      style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', padding: 6, display: 'flex', flexShrink: 0 }}
+                      aria-label={`Remove ${item.symbol} from watchlist`}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               );
             })}

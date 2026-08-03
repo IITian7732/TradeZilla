@@ -4,7 +4,7 @@ import type { IChartApi, ISeriesApi } from 'lightweight-charts';
 import { Trash2, GripVertical, PaintBucket, Pencil, Settings, Type, Bold, Italic } from 'lucide-react';
 
 export type Point = { logical: number; price: number };
-export type DrawingType = 'trend_line' | 'horizontal_line' | 'vertical_line' | 'rectangle' | 'circle' | 'parallel_channel' | 'fib_retracement' | 'text' | 'measure' | 'cursor' | 'long_position' | 'short_position' | 'alert';
+export type DrawingType = 'trend_line' | 'horizontal_line' | 'vertical_line' | 'rectangle' | 'circle' | 'parallel_channel' | 'fib_retracement' | 'text' | 'measure' | 'cursor' | 'long_position' | 'short_position' | 'alert' | 'ray' | 'cross_line' | 'emoji';
 
 export const DEFAULT_FIB_LEVELS = [
   { level: 0, visible: true, color: '#787B86' },
@@ -39,6 +39,10 @@ export interface Drawing {
   showFibTrendline?: boolean;
   profitColor?: string;
   lossColor?: string;
+  extendLeft?: boolean;
+  extendRight?: boolean;
+  middlePoint?: boolean;
+  priceLabels?: boolean;
 }
 
 interface ChartDrawingOverlayProps {
@@ -48,18 +52,30 @@ interface ChartDrawingOverlayProps {
   setActiveTool: (tool: DrawingType) => void;
   drawings: Drawing[];
   setDrawings: React.Dispatch<React.SetStateAction<Drawing[]>>;
-  onHistoryCommit?: (newDrawings: Drawing[]) => void;
+  onHistoryCommit?: (drawings: Drawing[]) => void;
   triggerResize?: number;
   currentPrice?: number;
   candles?: any[];
   alerts?: any[];
-  onRemoveAlert?: (id: number) => void;
+  onRemoveAlert?: (id: string) => void;
+  isLocked?: boolean;
+  isHidden?: boolean;
+  selectedEmoji?: string;
 }
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#0ea5e9', '#3b82f6', '#a855f7', '#ec4899', '#64748b', '#000000'];
 const FONT_SIZES = [10, 11, 12, 14, 16, 20, 24, 28, 32, 40];
 
-export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart, series, activeTool, setActiveTool, drawings, setDrawings, onHistoryCommit, triggerResize, currentPrice, candles, alerts, onRemoveAlert }) => {
+export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart, series, activeTool, setActiveTool, drawings, setDrawings, onHistoryCommit,
+  triggerResize,
+  currentPrice,
+  candles,
+  alerts,
+  onRemoveAlert,
+  isLocked,
+  isHidden,
+  selectedEmoji
+}) => {
   const [currentDrawing, setCurrentDrawing] = useState<Drawing | null>(null);
   const [pointDrag, setPointDrag] = useState<{ id: string; type: 'body' | 'entry' | 'target' | 'stop' | 'right_edge' | 'move' | 'resize'; pointIndex?: number; startPoints: Point[]; startMouse: Point; currentMouse?: Point } | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number, y: number } | null>(null);
@@ -76,6 +92,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isFibSettingsOpen, setIsFibSettingsOpen] = useState(false);
   const [isTextSettingsOpen, setIsTextSettingsOpen] = useState(false);
+  const [isTrendLineSettingsOpen, setIsTrendLineSettingsOpen] = useState(false);
 
   const overlayRef = useRef<SVGSVGElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -208,7 +225,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
       if (d && d.points.length > 0) {
         const p1 = toPhysical(d.points[0]);
         if (p1) {
-          setToolbarPos({ x: p1.x + 20, y: p1.y - 60 });
+          setToolbarPos({ x: (overlayRef.current?.getBoundingClientRect().width || 800) / 2 - 100, y: 20 });
         }
       }
     }
@@ -276,7 +293,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
         });
         setSelectedId(newDrawing.id);
         const p = toPhysical(logical);
-        if (p) setToolbarPos({ x: p.x + 20, y: p.y - 60 });
+        if (p) setToolbarPos({ x: (overlayRef.current?.getBoundingClientRect().width || 800) / 2 - 100, y: 20 });
         setActiveTool('cursor');
       } else if (activeTool === 'text') {
         newDrawing.text = ''; // Start empty
@@ -295,7 +312,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
         });
         setSelectedId(newDrawing.id);
         const p = toPhysical(logical);
-        if (p) setToolbarPos({ x: p.x + 20, y: p.y - 60 });
+        if (p) setToolbarPos({ x: (overlayRef.current?.getBoundingClientRect().width || 800) / 2 - 100, y: 20 });
         setActiveTool('cursor');
       } else if (activeTool === 'long_position' || activeTool === 'short_position') {
         const currentPrice = logical.price;
@@ -308,6 +325,8 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
         const p = toPhysical(logical);
         let rightLogical = logical.logical;
         if (p && chart) {
+          let leftX: any = 0;
+          let rightX: any = chart.timeScale().width();
           const rightL = chart.timeScale().coordinateToLogical((p.x + 150) as any);
           if (rightL !== null) rightLogical = rightL;
         }
@@ -327,7 +346,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
           return next;
         });
         setSelectedId(newDrawing.id);
-        if (p) setToolbarPos({ x: p.x + 20, y: p.y - 60 });
+        if (p) setToolbarPos({ x: (overlayRef.current?.getBoundingClientRect().width || 800) / 2 - 100, y: 20 });
         setActiveTool('cursor');
       } else {
         setCurrentDrawing(newDrawing);
@@ -347,7 +366,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
         setCurrentDrawing(null);
         setSelectedId(finished.id);
         const p = toPhysical(logical);
-        if (p) setToolbarPos({ x: p.x + 20, y: p.y - 60 });
+        if (p) setToolbarPos({ x: (overlayRef.current?.getBoundingClientRect().width || 800) / 2 - 100, y: 20 });
         setActiveTool('cursor');
       }
     }
@@ -378,7 +397,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
     if (point) {
       const p = toPhysical(point);
       if (p) {
-        setToolbarPos({ x: p.x + 20, y: p.y - 60 });
+        setToolbarPos({ x: (overlayRef.current?.getBoundingClientRect().width || 800) / 2 - 100, y: 20 });
       }
     }
   };
@@ -406,8 +425,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
     return 'none';
   };
 
-  const renderDrawing = (originalDrawing: Drawing, isTemp = false) => {
-    if (originalDrawing.points.length === 0) return null;
+  const getResolvedDrawing = (originalDrawing: Drawing): Drawing => {
     let drawing = originalDrawing;
     if (pointDrag && pointDrag.id === originalDrawing.id && pointDrag.currentMouse) {
       const deltaLogical = pointDrag.currentMouse.logical - pointDrag.startMouse.logical;
@@ -437,6 +455,16 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
       }
       drawing = { ...originalDrawing, points: newPoints };
     }
+    return drawing;
+  };
+
+  const renderDrawing = (originalDrawing: Drawing, isTemp = false, layer: 'background' | 'foreground' = 'foreground') => {
+    if (layer === 'background' && originalDrawing.type !== 'long_position' && originalDrawing.type !== 'short_position') {
+      return null;
+    }
+    
+    if (originalDrawing.points.length === 0) return null;
+    const drawing = getResolvedDrawing(originalDrawing);
 
     const p1 = toPhysical(drawing.points[0]);
     const p2 = drawing.points.length > 1 ? toPhysical(drawing.points[1]) : (isTemp && mousePos ? mousePos : null);
@@ -507,10 +535,50 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
     if (!p1 || !p2) return null;
 
     if (drawing.type === 'trend_line') {
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      let ux = 1, uy = 0;
+      if (len > 0) {
+        ux = dx / len;
+        uy = dy / len;
+      }
+      
+      let startX: any = p1.x, startY: any = p1.y;
+      let endX: any = p2.x, endY: any = p2.y;
+      
+      if (drawing.extendLeft) {
+        startX -= ux * 5000;
+        startY -= uy * 5000;
+      }
+      if (drawing.extendRight) {
+        endX += ux * 5000;
+        endY += uy * 5000;
+      }
+      
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2;
+
+      const price1 = drawing.points[0]?.price?.toFixed(2);
+      const price2 = drawing.points.length > 1 ? drawing.points[1]?.price?.toFixed(2) : null;
+
       return (
         <GroupWrapper>
-          <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="transparent" strokeWidth={15} onMouseDown={(e) => handleShapeMouseDown(e, 'move')} style={{ cursor: activeTool === 'cursor' ? 'move' : 'crosshair', pointerEvents: 'stroke' }} />
-          <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={drawing.color} strokeWidth={t} strokeDasharray={dash} style={{ pointerEvents: 'none' }} />
+          <line x1={startX} y1={startY} x2={endX} y2={endY} stroke="transparent" strokeWidth={15} onMouseDown={(e) => handleShapeMouseDown(e, 'move')} style={{ cursor: activeTool === 'cursor' ? 'move' : 'crosshair', pointerEvents: 'stroke' }} />
+          <line x1={startX} y1={startY} x2={endX} y2={endY} stroke={drawing.color} strokeWidth={t} strokeDasharray={dash} style={{ pointerEvents: 'none' }} />
+          {drawing.middlePoint && (
+            <circle cx={midX} cy={midY} r={t + 2} fill={drawing.color} style={{ pointerEvents: 'none' }} />
+          )}
+          {drawing.priceLabels && price1 && (
+            <text x={p1.x + 8} y={p1.y - 8} fill={drawing.color} fontSize={12} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+              {price1}
+            </text>
+          )}
+          {drawing.priceLabels && price2 && (
+            <text x={p2.x + 8} y={p2.y - 8} fill={drawing.color} fontSize={12} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+              {price2}
+            </text>
+          )}
         </GroupWrapper>
       );
     }
@@ -718,6 +786,8 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
       const stopY = pStop.y;
       const entryY = pEntry.y;
       const entryPrice = drawing.points[0].price;
+      const targetPrice = drawing.points[1].price;
+      const stopPrice = drawing.points[2].price;
       
 
 
@@ -730,87 +800,132 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
         }
       };
 
-      let isStoppedOut = false;
-      let isTargetHit = false;
-      let currentClose = entryPrice;
-      let hitIndex = -1;
+      if (layer === 'background') {
+        const isLong = drawing.type === 'long_position';
+        let cPrice = currentPrice ?? entryPrice;
 
-      if (candles && candles.length > 0) {
-        const startIndex = Math.max(0, Math.round(drawing.points[0].logical));
-        const rightLogical = Math.max(startIndex, Math.round(drawing.points[1].logical));
-        const endIndex = Math.min(candles.length - 1, rightLogical);
-        const tPrice = drawing.points[1].price;
-        const sPrice = drawing.points[2].price;
+        let hitX: number | null = null;
+        let hitType: 'target' | 'stop' | null = null;
+        let activated = false;
+        let activationX: number | null = null;
 
-        for (let i = startIndex; i <= endIndex; i++) {
-          const candle = candles[i];
-          if (!candle || !candle.high || !candle.low) continue;
-          
-          if (sPrice > entryPrice && candle.high >= sPrice) isStoppedOut = true;
-          if (sPrice < entryPrice && candle.low <= sPrice) isStoppedOut = true;
-          
-          if (tPrice > entryPrice && candle.high >= tPrice) isTargetHit = true;
-          if (tPrice < entryPrice && candle.low <= tPrice) isTargetHit = true;
+        if (candles && candles.length > 0) {
+          const startIndex = Math.max(0, Math.round(drawing.points[0].logical));
+          const rightLogical = Math.max(startIndex, Math.round(drawing.points[1].logical));
+          const endIndex = Math.min(candles.length - 1, rightLogical);
 
-          if (isStoppedOut || isTargetHit) {
-            hitIndex = i;
-            break;
+          for (let i = startIndex; i <= endIndex; i++) {
+            const candle = candles[i];
+            if (!candle || candle.high === undefined || candle.low === undefined) continue;
+
+            if (!activated) {
+              if (candle.low <= entryPrice && candle.high >= entryPrice) {
+                activated = true;
+              } else if (isLong ? candle.low < entryPrice : candle.high > entryPrice) {
+                activated = true;
+              }
+              
+              if (activated) {
+                const actPhys = toPhysical({ logical: i, price: entryPrice });
+                if (actPhys) activationX = Math.max(leftX, Math.min(rightX, actPhys.x));
+              }
+            }
+
+            if (activated) {
+              if (isLong) {
+                if (candle.low <= stopPrice) hitType = 'stop';
+                if (candle.high >= targetPrice) hitType = 'target';
+              } else {
+                if (candle.high >= stopPrice) hitType = 'stop';
+                if (candle.low <= targetPrice) hitType = 'target';
+              }
+
+              if (hitType) {
+                const hitPhys = toPhysical({ logical: i, price: entryPrice });
+                if (hitPhys) hitX = Math.max(leftX, Math.min(rightX, hitPhys.x));
+                break;
+              }
+            }
+          }
+
+          if (activated) {
+            if (hitType === 'target') {
+              cPrice = targetPrice;
+            } else if (hitType === 'stop') {
+              cPrice = stopPrice;
+            } else if (startIndex <= endIndex) {
+              cPrice = candles[endIndex].close;
+            }
+          } else {
+            cPrice = entryPrice;
           }
         }
-        currentClose = candles[endIndex].close;
-      } else if (currentPrice !== undefined) {
-        currentClose = currentPrice;
-      }
+        
+        let profitProgress = 0;
+        let lossProgress = 0;
 
-      const pCurrentClose = toPhysical({ logical: drawing.points[0].logical, price: currentClose });
-
-
-      let fillWidth = width;
-      if (candles && candles.length > 0) {
-        const rightLogicalLimit = Math.round(drawing.points[1].logical);
-        const maxLogical = hitIndex !== -1 ? hitIndex : (candles.length - 1);
-        const fillLogical = Math.min(rightLogicalLimit, Math.max(drawing.points[0].logical, maxLogical));
-        const pFill = toPhysical({ logical: fillLogical, price: entryPrice });
-        if (pFill) {
-          fillWidth = Math.max(0, Math.min(width, pFill.x - leftX));
+        if (isLong) {
+          if (cPrice > entryPrice) {
+            profitProgress = Math.min(1, (cPrice - entryPrice) / Math.abs(targetPrice - entryPrice));
+          } else if (cPrice < entryPrice) {
+            lossProgress = Math.min(1, (entryPrice - cPrice) / Math.abs(entryPrice - stopPrice));
+          }
+        } else {
+          if (cPrice < entryPrice) {
+            profitProgress = Math.min(1, (entryPrice - cPrice) / Math.abs(entryPrice - targetPrice));
+          } else if (cPrice > entryPrice) {
+            lossProgress = Math.min(1, (cPrice - entryPrice) / Math.abs(stopPrice - entryPrice));
+          }
         }
+
+        const profitFillHeight = Math.abs(targetY - entryY) * profitProgress;
+        const profitFillY = targetY < entryY ? entryY - profitFillHeight : entryY + profitFillHeight;
+
+        const lossFillHeight = Math.abs(stopY - entryY) * lossProgress;
+        const lossFillY = stopY < entryY ? entryY - lossFillHeight : entryY + lossFillHeight;
+
+        return (
+          <g key={drawing.id}>
+            {/* Base translucent boxes */}
+            <rect x={leftX} y={Math.min(entryY, targetY)} width={width} height={Math.abs(targetY - entryY)} fill={profitColor} fillOpacity={0.2} stroke="transparent" />
+            <rect x={leftX} y={Math.min(entryY, stopY)} width={width} height={Math.abs(stopY - entryY)} fill={lossColor} fillOpacity={0.2} stroke="transparent" />
+            
+            {/* Hit full-fill boxes */}
+            {hitType === 'target' && hitX !== null && activationX !== null && (
+              <rect x={activationX} y={Math.min(entryY, targetY)} width={Math.max(0, hitX - activationX)} height={Math.abs(targetY - entryY)} fill={profitColor} fillOpacity={0.4} stroke="transparent" />
+            )}
+            {hitType === 'stop' && hitX !== null && activationX !== null && (
+              <rect x={activationX} y={Math.min(entryY, stopY)} width={Math.max(0, hitX - activationX)} height={Math.abs(stopY - entryY)} fill={lossColor} fillOpacity={0.4} stroke="transparent" />
+            )}
+            
+            {/* Progress rectangle fills (only if not hit) */}
+            {!hitType && activated && profitProgress > 0 && activationX !== null && (
+              <rect x={activationX} y={Math.min(entryY, profitFillY)} width={Math.max(0, rightX - activationX)} height={profitFillHeight} fill={profitColor} fillOpacity={0.4} stroke="transparent" />
+            )}
+            {!hitType && activated && lossProgress > 0 && activationX !== null && (
+              <rect x={activationX} y={Math.min(entryY, lossFillY)} width={Math.max(0, rightX - activationX)} height={lossFillHeight} fill={lossColor} fillOpacity={0.4} stroke="transparent" />
+            )}
+          </g>
+        );
       }
 
       return (
         <GroupWrapper>
-          {/* Target Box (Filled) */}
-          <rect x={leftX} y={Math.min(entryY, targetY)} width={fillWidth} height={Math.abs(targetY - entryY)} fill={profitColor} fillOpacity={0.2} stroke="transparent"
+          {/* Target Box (Invisible drag handle) */}
+          <rect x={leftX} y={Math.min(entryY, targetY)} width={width} height={Math.abs(targetY - entryY)} fill="transparent" stroke="transparent"
             onMouseDown={(e) => handleMouseDown(e, 'body')}
             onMouseEnter={() => setHoveredId(drawing.id)}
             onMouseLeave={() => setHoveredId(null)}
             style={{ cursor: activeTool === 'cursor' ? 'move' : 'crosshair', pointerEvents: activeTool === 'cursor' ? 'all' : 'none' }}
           />
-          {/* Target Box (Unfilled) */}
-          {width > fillWidth && (
-             <rect x={leftX + fillWidth} y={Math.min(entryY, targetY)} width={width - fillWidth} height={Math.abs(targetY - entryY)} fill="transparent" stroke={profitColor} strokeOpacity={0.5} strokeWidth={1} strokeDasharray="4 4"
-               onMouseDown={(e) => handleMouseDown(e, 'body')}
-               onMouseEnter={() => setHoveredId(drawing.id)}
-               onMouseLeave={() => setHoveredId(null)}
-               style={{ cursor: activeTool === 'cursor' ? 'move' : 'crosshair', pointerEvents: activeTool === 'cursor' ? 'all' : 'none' }}
-             />
-          )}
 
-          {/* Stop Box (Filled) */}
-          <rect x={leftX} y={Math.min(entryY, stopY)} width={fillWidth} height={Math.abs(stopY - entryY)} fill={lossColor} fillOpacity={0.2} stroke="transparent"
+          {/* Stop Box (Invisible drag handle) */}
+          <rect x={leftX} y={Math.min(entryY, stopY)} width={width} height={Math.abs(stopY - entryY)} fill="transparent" stroke="transparent"
             onMouseDown={(e) => handleMouseDown(e, 'body')}
             onMouseEnter={() => setHoveredId(drawing.id)}
             onMouseLeave={() => setHoveredId(null)}
             style={{ cursor: activeTool === 'cursor' ? 'move' : 'crosshair', pointerEvents: activeTool === 'cursor' ? 'all' : 'none' }}
           />
-          {/* Stop Box (Unfilled) */}
-          {width > fillWidth && (
-             <rect x={leftX + fillWidth} y={Math.min(entryY, stopY)} width={width - fillWidth} height={Math.abs(stopY - entryY)} fill="transparent" stroke={lossColor} strokeOpacity={0.5} strokeWidth={1} strokeDasharray="4 4"
-               onMouseDown={(e) => handleMouseDown(e, 'body')}
-               onMouseEnter={() => setHoveredId(drawing.id)}
-               onMouseLeave={() => setHoveredId(null)}
-               style={{ cursor: activeTool === 'cursor' ? 'move' : 'crosshair', pointerEvents: activeTool === 'cursor' ? 'all' : 'none' }}
-             />
-          )}
           
 
           {/* Middle Line */}
@@ -871,6 +986,17 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
 
   return (
     <>
+      {/* Background Layer for Position Tools */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 5 }}>
+        <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
+          {drawings.map(d => (
+            <React.Fragment key={`bg-${d.id}`}>
+              {renderDrawing(d, false, 'background')}
+            </React.Fragment>
+          ))}
+        </svg>
+      </div>
+
       <svg
         ref={overlayRef}
         style={{
@@ -967,7 +1093,8 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
       </svg>
 
       {/* HTML Overlay for Text Drawings */}
-      {drawings.map(d => {
+      {drawings.map(origD => {
+        const d = getResolvedDrawing(origD);
         if (d.type !== 'text') return null;
         const p1 = toPhysical(d.points[0]);
         if (!p1) return null;
@@ -980,7 +1107,7 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
               if (activeTool === 'cursor') {
                 e.stopPropagation();
                 setSelectedId(d.id);
-                setToolbarPos({ x: p1.x + 20, y: p1.y - 60 });
+                setToolbarPos({ x: (overlayRef.current?.getBoundingClientRect().width || 800) / 2 - 100, y: 20 });
                 // If clicked on the wrapper (padding), start drag move
                 if (e.target === e.currentTarget) {
                   const rect = overlayRef.current?.getBoundingClientRect();
@@ -1046,7 +1173,8 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
       })}
 
       {/* HTML Overlay for Position Labels */}
-      {drawings.map(d => {
+      {drawings.map(origD => {
+        const d = getResolvedDrawing(origD);
         if (d.type !== 'long_position' && d.type !== 'short_position') return null;
         
         const isSelected = selectedId === d.id;
@@ -1478,6 +1606,66 @@ export const ChartDrawingOverlay: React.FC<ChartDrawingOverlayProps> = ({ chart,
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: 16 }}>
               <button onClick={() => setIsTextSettingsOpen(false)} style={{ background: '#fff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '6px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>Cancel</button>
               <button onClick={() => setIsTextSettingsOpen(false)} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '6px 24px', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Ok</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trend Line Settings Modal */}
+      {isTrendLineSettingsOpen && selectedDrawing && selectedDrawing.type === 'trend_line' && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}>
+          <div ref={modalRef} style={{ background: '#fff', borderRadius: 12, padding: 20, width: 400, boxShadow: '0 20px 40px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: '#0f172a' }}>Trend Line</h3>
+              </div>
+              <button onClick={() => setIsTrendLineSettingsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 24, color: '#64748b', lineHeight: 1 }}>&times;</button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 24, borderBottom: '1px solid #e2e8f0', marginBottom: 20 }}>
+              <button style={{ padding: '8px 4px', border: 'none', background: 'none', borderBottom: '2px solid #0f172a', color: '#0f172a', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Style</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ fontSize: 14, color: '#0f172a', width: 100 }}>Line</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="color" value={selectedDrawing.color || '#2196f3'} onChange={(e) => updateSelected({ color: e.target.value })} style={{ width: 32, height: 32, padding: 0, border: 'none', borderRadius: 4, cursor: 'pointer' }} />
+                  <select value={selectedDrawing.thickness || 2} onChange={(e) => updateSelected({ thickness: Number(e.target.value) })} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e1', cursor: 'pointer' }}>
+                    {[1, 2, 3, 4].map(t => <option key={t} value={t}>{t}px</option>)}
+                  </select>
+                  <select value={selectedDrawing.lineStyle || 'solid'} onChange={(e) => updateSelected({ lineStyle: e.target.value as any })} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e1', cursor: 'pointer' }}>
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                  </select>
+                </div>
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={selectedDrawing.extendLeft || false} onChange={(e) => updateSelected({ extendLeft: e.target.checked })} style={{ width: 16, height: 16, accentColor: '#2563eb' }} />
+                <span style={{ fontSize: 14, color: '#0f172a' }}>Extend left line</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={selectedDrawing.extendRight || false} onChange={(e) => updateSelected({ extendRight: e.target.checked })} style={{ width: 16, height: 16, accentColor: '#2563eb' }} />
+                <span style={{ fontSize: 14, color: '#0f172a' }}>Extend right line</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={selectedDrawing.middlePoint || false} onChange={(e) => updateSelected({ middlePoint: e.target.checked })} style={{ width: 16, height: 16, accentColor: '#2563eb' }} />
+                <span style={{ fontSize: 14, color: '#0f172a' }}>Middle point</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={selectedDrawing.priceLabels || false} onChange={(e) => updateSelected({ priceLabels: e.target.checked })} style={{ width: 16, height: 16, accentColor: '#2563eb' }} />
+                <span style={{ fontSize: 14, color: '#0f172a' }}>Price labels</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
+              <button onClick={() => setIsTrendLineSettingsOpen(false)} style={{ padding: '8px 16px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 500, color: '#0f172a' }}>Cancel</button>
+              <button onClick={() => setIsTrendLineSettingsOpen(false)} style={{ padding: '8px 16px', background: '#2563eb', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 500, color: '#fff' }}>Ok</button>
             </div>
           </div>
         </div>

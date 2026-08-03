@@ -42,7 +42,29 @@ export class ATRCalculator {
   applyMovingAverage(trueRanges: number[]): (number | undefined)[] {
     if (this.maType === 'EMA') return this.calculateEMA(trueRanges, this.length);
     if (this.maType === 'WMA') return this.calculateWMA(trueRanges, this.length);
+    if (this.maType === 'RMA') return this.calculateRMA(trueRanges, this.length);
     return this.calculateSMA(trueRanges, this.length);
+  }
+
+  calculateRMA(values: number[], period: number): (number | undefined)[] {
+    const result: (number | undefined)[] = [];
+    let rma: number | undefined = undefined;
+    const alpha = 1 / period;
+    
+    for (let i = 0; i < values.length; i++) {
+      if (i < period - 1) {
+        result.push(undefined);
+      } else if (i === period - 1) {
+        let sum = 0;
+        for (let j = 0; j < period; j++) sum += values[j] || 0;
+        rma = sum / period;
+        result.push(rma);
+      } else {
+        rma = (values[i] || 0) * alpha + rma! * (1 - alpha);
+        result.push(rma);
+      }
+    }
+    return result;
   }
 
   calculateSMA(values: number[], period: number): (number | undefined)[] {

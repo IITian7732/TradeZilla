@@ -15,6 +15,8 @@ export interface Order {
   quantity: number;
   price?: number;         // Limit/SL price; undefined for MARKET orders
   triggerPrice?: number;  // For SL / SL-M orders
+  tp?: number;            // Take Profit for pending orders
+  sl?: number;            // Stop Loss for pending orders
   status: OrderStatus;
   executedPrice?: number;
   executedAt?: string;
@@ -33,6 +35,8 @@ export interface Holding {
   investedValue: number;
   pnl?: number;
   pnlPct?: number;
+  tp?: number; // Take Profit
+  sl?: number; // Stop Loss
 }
 
 export interface Trade {

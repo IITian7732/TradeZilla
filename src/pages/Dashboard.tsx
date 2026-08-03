@@ -50,7 +50,6 @@ export default function Dashboard() {
             {user?.fullName?.split(' ')[0] ?? 'Trader'} 👋
           </h2>
         </div>
-        {USE_MOCK && <span className="simulated-tag">SIMULATED</span>}
       </div>
 
       {/* Portfolio summary card */}

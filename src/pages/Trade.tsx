@@ -101,7 +101,6 @@ export default function Trade() {
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {quote.isStale && <span className="stale-tag">Data delayed</span>}
-                {USE_MOCK && <span className="simulated-tag">SIMULATED</span>}
               </div>
             </div>
             <p className="mono" style={{ fontSize: 36, fontWeight: 900, color: '#0B0F19', margin: '0 0 4px', letterSpacing: '-1px' }}>

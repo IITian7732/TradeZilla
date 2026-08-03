@@ -111,9 +111,9 @@ export default function Portfolio() {
             />
           ) : (
             holdings.map((h, i) => (
-              <button
+              <div
                 key={h.id}
-                onClick={() => { setSelectedSymbol(h.symbol, h.exchange); navigate('/trade'); }}
+                onClick={() => { setSelectedSymbol(h.symbol, h.exchange); navigate('/charts'); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
                   width: '100%', background: 'none', border: 'none', cursor: 'pointer',
@@ -123,13 +123,8 @@ export default function Portfolio() {
                 onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}
               >
-                <div style={{
-                  width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                  background: (h.pnl ?? 0) >= 0 ? 'rgba(16, 185, 129,0.1)' : 'rgba(239, 68, 68,0.1)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: (h.pnl ?? 0) >= 0 ? '#10B981' : '#EF4444',
-                }}>
-                  {(h.pnl ?? 0) >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: '#0F172A' }}>
+                  {h.symbol[0]}
                 </div>
                 <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: '#0B0F19', margin: '0 0 2px' }}>{h.symbol}</p>
@@ -151,7 +146,7 @@ export default function Portfolio() {
                     Exit
                   </button>
                 </div>
-              </button>
+              </div>
             ))
           )}
         </div>

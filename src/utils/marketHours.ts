@@ -23,7 +23,7 @@ export function isMarketOpen(): boolean {
   const openMinutes = MARKET_HOURS.OPEN_HOUR_IST * 60 + MARKET_HOURS.OPEN_MINUTE_IST;
   const closeMinutes = MARKET_HOURS.CLOSE_HOUR_IST * 60 + MARKET_HOURS.CLOSE_MINUTE_IST;
 
-  if (!MARKET_HOURS.OPEN_DAYS.includes(day as 1 | 2 | 3 | 4 | 5 | 6)) return false;
+  if (!(MARKET_HOURS.OPEN_DAYS as readonly number[]).includes(day)) return false;
   return totalMinutes >= openMinutes && totalMinutes < closeMinutes;
 }
 
@@ -40,7 +40,7 @@ export function getMarketStatusLabel(): 'Market Open' | 'Market Closed' | 'Pre-O
   const openMinutes = MARKET_HOURS.OPEN_HOUR_IST * 60 + MARKET_HOURS.OPEN_MINUTE_IST;
   const closeMinutes = MARKET_HOURS.CLOSE_HOUR_IST * 60 + MARKET_HOURS.CLOSE_MINUTE_IST;
 
-  if (!MARKET_HOURS.OPEN_DAYS.includes(day as 1 | 2 | 3 | 4 | 5 | 6)) return 'Market Closed';
+  if (!(MARKET_HOURS.OPEN_DAYS as readonly number[]).includes(day)) return 'Market Closed';
   if (totalMinutes >= preOpenStart && totalMinutes < openMinutes) return 'Pre-Open';
   if (totalMinutes >= openMinutes && totalMinutes < closeMinutes) return 'Market Open';
   return 'Market Closed';

@@ -109,3 +109,13 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Hide TradingView watermark in secondary oscillator panes */
+.oscillator-pane a,
+.oscillator-pane svg,
+.oscillator-pane iframe,
+.oscillator-pane div[id^="tv-attr-logo"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

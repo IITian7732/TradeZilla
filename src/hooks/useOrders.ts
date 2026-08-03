@@ -24,6 +24,8 @@ export interface PlaceOrderInput {
   quantity: number;
   price?: number;
   triggerPrice?: number;
+  tp?: number;
+  sl?: number;
 }
 
 export function useOrders(status?: Order['status']) {
@@ -69,18 +71,20 @@ export function usePlaceOrder() {
         // Use input price if provided, otherwise randomize a bit for mock
         const execPrice = input.price ?? (Math.random() * 1000 + 100);
         
+        const isPending = input.orderType !== 'MARKET';
         const mockOrder: Order = {
           id: Math.random().toString(36).slice(2),
           userId: 'mock',
           ...input,
-          status: 'EXECUTED',
-          executedPrice: execPrice,
-          executedAt: new Date().toISOString(),
+          status: isPending ? 'PENDING' : 'EXECUTED',
+          executedPrice: isPending ? undefined : execPrice,
+          executedAt: isPending ? undefined : new Date().toISOString(),
           createdAt: new Date().toISOString(),
         };
         MOCK_ORDERS.unshift(mockOrder);
 
-        const costValue = mockOrder.quantity * execPrice;
+        if (!isPending) {
+          const costValue = mockOrder.quantity * execPrice;
 
         if (input.side === 'BUY') {
           if (account) setAccount({ ...account, balance: account.balance - costValue });
@@ -132,6 +136,7 @@ export function usePlaceOrder() {
             MOCK_STATS.winRate = calcWinRate(MOCK_RECENT_TRADES as any) ?? 0;
           }
         }
+        } // Close if (!isPending)
         
         return mockOrder;
       }
@@ -173,7 +178,11 @@ export function useCancelOrder() {
 
   return useMutation({
     mutationFn: async (orderId: string) => {
-      if (USE_MOCK) return;
+      if (USE_MOCK) {
+        const order = MOCK_ORDERS.find(o => o.id === orderId);
+        if (order) order.status = 'CANCELLED';
+        return;
+      }
       if (!user?.id) throw new Error('Not authenticated');
       const { error } = await supabase
         .from('orders')

@@ -8,8 +8,15 @@ import type { Watchlist, WatchlistItem } from '../types/user';
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === 'true' ||
   !import.meta.env.VITE_SUPABASE_URL;
 
-let MOCK_WATCHLISTS: Watchlist[] = [];
-
+let MOCK_WATCHLISTS: Watchlist[] = [
+  {
+    id: 'default-wl',
+    userId: 'mock-user-id',
+    name: 'My Watchlist',
+    createdAt: new Date().toISOString(),
+    items: [],
+  }
+];
 export function useWatchlists() {
   const { user } = useAuthStore();
 

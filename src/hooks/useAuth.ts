@@ -130,13 +130,18 @@ export function useAuth() {
         }
       }
 
-      // Create profile row
+      // Create profile row and default watchlist
       if (data.user) {
         await supabase.from('profiles').upsert({
           id: data.user.id,
           full_name: fullName,
           phone: phone,
           ...(avatarUrl && { avatar_url: avatarUrl })
+        });
+        
+        await supabase.from('watchlists').insert({
+          user_id: data.user.id,
+          name: 'My Watchlist'
         });
       }
       return data;

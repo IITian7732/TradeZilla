@@ -1,5 +1,5 @@
-// src/components/ui/Modal.tsx
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export interface ModalProps {
@@ -28,7 +28,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true" aria-label={title}>
       <div className="modal-content">
         {title && (
@@ -46,6 +46,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
         <div style={{ padding: 20 }}>{children}</div>
         {footer && <div style={{ padding: '0 20px 20px' }}>{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
