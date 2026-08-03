@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Smile, Moon, Sun } from 'lucide-react';
+import { Smile, Moon, Sun, RefreshCw } from 'lucide-react';
 import { EMOJI_CATEGORIES } from '../utils/emojiData';
 
 import { RSICalculator } from '../utils/rsiCalculator';
@@ -2393,15 +2393,6 @@ return (
           </div>
         </div>
 
-        {/* Theme Toggle */}
-        <button 
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}
-          title="Change Theme"
-        >
-          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
           
           {/* Layout Dropdown */}
@@ -2479,6 +2470,28 @@ return (
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button
+              onClick={() => {
+                if (mainChartInstance.current) {
+                  mainChartInstance.current.timeScale().scrollToRealTime();
+                }
+              }}
+              title="Refresh Chart"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: 'transparent', color: '#475569', border: 'none', cursor: 'pointer' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#0B0F19'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#475569'; }}
+            >
+              <RefreshCw size={18} />
+            </button>
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: 'transparent', color: '#475569', border: 'none', cursor: 'pointer' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#0B0F19'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#475569'; }}
+              title="Change Theme"
+            >
+              {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
             <button
             onClick={() => { setTempCandleSettings(candleSettings); setIsChartSettingsModalOpen(true); }}
             title="Chart Settings"
