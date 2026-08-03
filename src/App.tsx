@@ -7,6 +7,7 @@ import { FullPageSpinner } from './components/ui/Spinner';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { useAuth } from './hooks/useAuth';
 import { useAuthStore } from './store/authStore';
+import { useAutoExecuteEngine } from './hooks/useAutoExecuteEngine';
 import './styles/globals.css';
 
 // Lazy-loaded pages for route-based code splitting
@@ -63,6 +64,8 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   // Initialize auth listener
   useAuth();
+  // Initialize global auto-trader
+  useAutoExecuteEngine();
 
   return (
     <Suspense fallback={<FullPageSpinner />}>
