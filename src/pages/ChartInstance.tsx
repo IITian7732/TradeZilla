@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Smile } from 'lucide-react';
+import { Smile, Moon, Sun } from 'lucide-react';
 import { EMOJI_CATEGORIES } from '../utils/emojiData';
 
 import { RSICalculator } from '../utils/rsiCalculator';
@@ -304,6 +304,7 @@ export default function ChartInstance({
   const [isChartTypeOpen, setIsChartTypeOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isInstantOrder, setIsInstantOrder] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [activeIndicators, setActiveIndicators] = useState<string[]>([]);
   const [maximizedPane, setMaximizedPane] = useState<string | null>(null);
   const [minimizedPanes, setMinimizedPanes] = useState<string[]>([]);
@@ -2391,6 +2392,15 @@ return (
             }} />
           </div>
         </div>
+
+        {/* Theme Toggle */}
+        <button 
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}
+          title="Change Theme"
+        >
+          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
           
