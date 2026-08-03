@@ -2472,9 +2472,8 @@ return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button
               onClick={() => {
-                if (mainChartInstance.current) {
-                  mainChartInstance.current.timeScale().scrollToRealTime();
-                }
+                chartRef.current?.timeScale().resetTimeScale();
+                chartRef.current?.priceScale('right').applyOptions({ autoScale: true });
               }}
               title="Refresh Chart"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, background: 'transparent', color: '#475569', border: 'none', cursor: 'pointer' }}
