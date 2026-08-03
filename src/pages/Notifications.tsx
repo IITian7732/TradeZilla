@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react';
 import { useNotificationStore, type Notification } from '../store/notificationStore';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, Check, TrendingUp, AlertCircle, Info, Trash2 } from 'lucide-react';
+import { Bell, TrendingUp, AlertCircle, Info, Trash2 } from 'lucide-react';
 import { TopBar } from '../components/layout/TopBar';
-import { BottomNav } from '../components/layout/BottomNav';
 
 export default function Notifications() {
   const { notifications, markAsRead, markAllAsRead, clearAll } = useNotificationStore();
@@ -26,7 +25,7 @@ export default function Notifications() {
   return (
     <>
       <TopBar title="Notifications" showBack />
-      <div style={{ padding: '16px 16px 100px' }}>
+      <div style={{ padding: '16px 16px 80px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ margin: 0, fontSize: 18, color: '#0F172A', fontWeight: 600 }}>Recent</h2>
           {notifications.length > 0 && (
@@ -95,7 +94,6 @@ export default function Notifications() {
           </div>
         )}
       </div>
-      <BottomNav />
     </>
   );
 }
