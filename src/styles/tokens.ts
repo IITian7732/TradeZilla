@@ -3,32 +3,29 @@
 // Every component references these tokens. Never use raw hex in className strings.
 
 export const colors = {
-  // Backgrounds (layered depth — dark teal theme)
-  bgPrimary: '#0D1117',   // App background — deep charcoal
-  bgSurface: '#161B22',   // Card / panel background
-  bgElevated: '#1E2530',  // Modals, dropdowns, tooltips
-  bgOverlay: '#252D3A',   // Hover states, selected rows
-  border: '#1E2A38',      // Subtle borders
-  borderBright: '#2D3F52',// Active/focused borders
+  // Backgrounds (layered depth)
+  bgPrimary: '#F4F6F9',   // App background
+  bgSurface: '#FFFFFF',   // Card / panel background
+  bgElevated: '#F8FAFC',  // Hover state, modals, dropdowns
+  border: '#E2E8F0',      // Dividers, card borders
 
-  // Brand — Teal (#00C2A8) — uniquely TradeZilla, unclaimed by any Indian competitor
-  brandPrimary: '#00C2A8',
-  brandPrimaryHover: '#00A896',
-  brandAccent: '#F0B429',       // Reserved ONLY for premium/achievement/trophy (gold)
-  brandGlow: 'rgba(0,194,168,0.15)', // Teal glow for highlights
+  // Brand
+  brandPrimary: '#0E7490',      // Primary actions, active nav/tab, links
+  brandPrimaryHover: '#0891B2',
+  brandAccent: '#F59E0B',       // Reserved ONLY for premium/achievement/trophy
 
   // Semantic — SINGLE canonical set. Gains/losses/status always resolve to exactly these.
-  positive: '#26A65B',              // Gains, BUY, success states — mature green
-  positiveMuted: 'rgba(38,166,91,0.12)',
-  negative: '#E84040',              // Losses, SELL, error states — warm red
-  negativeMuted: 'rgba(232,64,64,0.12)',
-  neutral: '#8B95A2',               // Flat / 0.00% / unknown-but-not-an-error
-  warning: '#F0B429',
+  positive: '#10B981',              // Gains, BUY, success states
+  positiveMuted: 'rgba(16, 185, 129,0.12)',
+  negative: '#EF4444',              // Losses, SELL, error states
+  negativeMuted: 'rgba(239, 68, 68,0.12)',
+  neutral: '#94A3B8',               // Flat / 0.00% / unknown-but-not-an-error
+  warning: '#F59E0B',
 
   // Text
-  textPrimary: '#E8EDF3',
-  textSecondary: '#8B95A2',
-  textMuted: '#4A5568',
+  textPrimary: '#0B0F19',
+  textSecondary: '#475569',
+  textMuted: '#64748B',
 } as const;
 
 export const fonts = {

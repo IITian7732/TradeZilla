@@ -411,42 +411,48 @@ export default function ChartInstance({
     if (activeOverlayTarget) {
       priceLineRefs.current.entry = candlestickSeries.createPriceLine({
         price: activeOverlayTarget.avgBuyPrice,
-        color: '#2563EB', // Blue
+        color: '#2563EB',
         lineWidth: 2,
-        lineStyle: 1, // Dotted
+        lineStyle: 2, // Dashed
         axisLabelVisible: true,
+        title: 'Entry',
       });
 
       if (activeOverlayTarget.tp) {
         priceLineRefs.current.tp = candlestickSeries.createPriceLine({
           price: activeOverlayTarget.tp,
-          color: '#10B981', // Green
+          color: '#10B981',
           lineWidth: 2,
-          lineStyle: 1, // Dotted
+          lineStyle: 2, // Dashed
           axisLabelVisible: true,
+          title: 'TP',
         });
       }
 
       if (activeOverlayTarget.sl) {
         priceLineRefs.current.sl = candlestickSeries.createPriceLine({
           price: activeOverlayTarget.sl,
-          color: '#EF4444', // Red
+          color: '#EF4444',
           lineWidth: 2,
-          lineStyle: 1, // Dotted
+          lineStyle: 2, // Dashed
           axisLabelVisible: true,
+          title: 'SL',
         });
       }
     }
-  }, [holdings, orders, selectedSymbol, mainChartInstance]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOverlayTarget?.avgBuyPrice, activeOverlayTarget?.tp, activeOverlayTarget?.sl, activeOverlayTarget?.id, selectedSymbol]);
 
   const handleExitPosition = () => {
     if (!activeOverlayTarget) return;
+    const isShort = !!(activeOverlayTarget as any).isShort;
     placeOrder.mutate({
       symbol: (activeOverlayTarget as any).symbol,
       exchange: (activeOverlayTarget as any).exchange,
       companyName: (activeOverlayTarget as any).companyName,
-      side: 'SELL',
+      side: isShort ? 'BUY' : 'SELL', // Cover short with BUY, exit long with SELL
       orderType: 'MARKET',
+      productType: (activeOverlayTarget as any).productType ?? 'DELIVERY',
       quantity: (activeOverlayTarget as any).quantity,
     });
   };

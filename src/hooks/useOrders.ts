@@ -1,14 +1,13 @@
-// src/hooks/useOrders.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import type { Order, OrderSide, OrderType } from '../types/trade';
+import { calcCharges } from '../utils/brokerageCalculator';
 
 import { MOCK_HOLDINGS } from './usePortfolio';
 import { MOCK_STATS, MOCK_RECENT_TRADES } from './useTradingStats';
 import { calcWinRate } from '../utils/calculations';
-import { useTradeJournalStore } from '../store/tradeJournalStore';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === 'true' ||
   !import.meta.env.VITE_SUPABASE_URL;
@@ -69,10 +68,10 @@ export function usePlaceOrder() {
     mutationFn: async (input: PlaceOrderInput) => {
       if (USE_MOCK) {
         await new Promise(r => setTimeout(r, 500));
-        // Use input price if provided, otherwise randomize a bit for mock
         const execPrice = input.price ?? (Math.random() * 1000 + 100);
-        
         const isPending = input.orderType !== 'MARKET';
+        const productType = input.productType ?? 'DELIVERY';
+
         const mockOrder: Order = {
           id: Math.random().toString(36).slice(2),
           userId: 'mock',
@@ -85,91 +84,107 @@ export function usePlaceOrder() {
         MOCK_ORDERS.unshift(mockOrder);
 
         if (!isPending) {
-          const costValue = mockOrder.quantity * execPrice;
+          const orderValue = mockOrder.quantity * execPrice;
+          // Calculate brokerage charges
+          const charges = calcCharges({
+            side: input.side,
+            productType,
+            quantity: input.quantity,
+            price: execPrice,
+            exchange: input.exchange,
+          });
 
-        if (input.side === 'BUY') {
-          if (account) setAccount({ ...account, balance: account.balance - costValue });
-          
-          const existing = MOCK_HOLDINGS.find(h => h.symbol === input.symbol);
-          if (existing) {
-            const totalValue = (existing.quantity * existing.avgBuyPrice) + costValue;
-            existing.quantity += input.quantity;
-            existing.avgBuyPrice = totalValue / existing.quantity;
+          if (input.side === 'BUY') {
+            // Cost = order value + all charges
+            const totalCost = orderValue + charges.total;
+            if (account) setAccount({ ...account, balance: account.balance - totalCost });
+
+            const existing = MOCK_HOLDINGS.find(h => h.symbol === input.symbol);
+
+            if (existing && (existing as any).isShort) {
+              // Covering a short position
+              const shortAvg = existing.avgBuyPrice;
+              const pnl = (shortAvg - execPrice) * Math.min(mockOrder.quantity, existing.quantity) - charges.total;
+              existing.quantity -= input.quantity;
+              if (existing.quantity <= 0) {
+                const idx = MOCK_HOLDINGS.findIndex(h => h.symbol === input.symbol && (h as any).isShort);
+                if (idx >= 0) MOCK_HOLDINGS.splice(idx, 1);
+              }
+              MOCK_STATS.totalTrades += 1;
+              MOCK_STATS.bestTradePnl = Math.max(MOCK_STATS.bestTradePnl, pnl);
+              MOCK_RECENT_TRADES.unshift({
+                id: mockOrder.id, userId: 'mock', symbol: input.symbol,
+                exchange: input.exchange, side: 'BUY', quantity: input.quantity,
+                price: execPrice, pnl, tradedAt: mockOrder.executedAt!,
+              } as any);
+              MOCK_STATS.winRate = calcWinRate(MOCK_RECENT_TRADES as any) ?? 0;
+            } else if (existing) {
+              // Adding to long position
+              const totalValue = (existing.quantity * existing.avgBuyPrice) + orderValue;
+              existing.quantity += input.quantity;
+              existing.avgBuyPrice = totalValue / existing.quantity;
+            } else {
+              // New long position
+              MOCK_HOLDINGS.push({
+                id: Math.random().toString(),
+                symbol: input.symbol, exchange: input.exchange,
+                companyName: input.companyName, quantity: input.quantity,
+                avgBuyPrice: execPrice, currentPrice: execPrice,
+                currentValue: orderValue, investedValue: orderValue,
+                productType,
+              } as any);
+            }
           } else {
-            MOCK_HOLDINGS.push({
-              id: Math.random().toString(),
-              symbol: input.symbol,
-              exchange: input.exchange,
-              companyName: input.companyName,
-              quantity: input.quantity,
-              avgBuyPrice: execPrice,
-              currentPrice: execPrice,
-              currentValue: costValue,
-              investedValue: costValue
-            } as any);
-          }
-        } else {
-          // SELL
-          if (account) setAccount({ ...account, balance: account.balance + costValue });
-          const existingIdx = MOCK_HOLDINGS.findIndex(h => h.symbol === input.symbol);
-          if (existingIdx >= 0) {
-            const h = MOCK_HOLDINGS[existingIdx];
-            const pnl = (execPrice - h.avgBuyPrice) * mockOrder.quantity;
-            
-            h.quantity -= input.quantity;
-            if (h.quantity <= 0) MOCK_HOLDINGS.splice(existingIdx, 1);
-            
-            MOCK_STATS.totalTrades += 1;
-            MOCK_STATS.bestTradePnl = Math.max(MOCK_STATS.bestTradePnl, pnl);
-            
-            MOCK_RECENT_TRADES.unshift({
-              id: mockOrder.id,
-              userId: 'mock',
-              symbol: input.symbol,
-              exchange: input.exchange,
-              side: 'SELL',
-              quantity: input.quantity,
-              price: execPrice,
-              pnl: pnl,
-              tradedAt: mockOrder.executedAt!
-            } as any);
-            
-            MOCK_STATS.winRate = calcWinRate(MOCK_RECENT_TRADES as any) ?? 0;
+            // SELL
+            const proceeds = orderValue - charges.total;
+            const existingIdx = MOCK_HOLDINGS.findIndex(h => h.symbol === input.symbol && !(h as any).isShort);
 
-            // Auto-log to Trade Journal
-            const pnlPct = h.avgBuyPrice > 0 ? ((execPrice - h.avgBuyPrice) / h.avgBuyPrice) * 100 : 0;
-            useTradeJournalStore.getState().addEntry({
-              id: mockOrder.id,
-              symbol: input.symbol,
-              exchange: input.exchange,
-              companyName: input.companyName,
-              side: 'SELL',
-              quantity: input.quantity,
-              entryPrice: h.avgBuyPrice,
-              exitPrice: execPrice,
-              pnl,
-              pnlPct,
-              entryReason: '',
-              exitReason: '',
-              emotionTag: 'neutral',
-              lessons: '',
-              tradedAt: mockOrder.executedAt!,
-            });
+            if (existingIdx >= 0) {
+              // Normal sell of long position
+              if (account) setAccount({ ...account, balance: account.balance + proceeds });
+              const h = MOCK_HOLDINGS[existingIdx];
+              const pnl = (execPrice - h.avgBuyPrice) * mockOrder.quantity - charges.total;
+              h.quantity -= input.quantity;
+              if (h.quantity <= 0) MOCK_HOLDINGS.splice(existingIdx, 1);
+
+              MOCK_STATS.totalTrades += 1;
+              MOCK_STATS.bestTradePnl = Math.max(MOCK_STATS.bestTradePnl, pnl);
+              MOCK_RECENT_TRADES.unshift({
+                id: mockOrder.id, userId: 'mock', symbol: input.symbol,
+                exchange: input.exchange, side: 'SELL', quantity: input.quantity,
+                price: execPrice, pnl, tradedAt: mockOrder.executedAt!,
+              } as any);
+              MOCK_STATS.winRate = calcWinRate(MOCK_RECENT_TRADES as any) ?? 0;
+            } else if (productType === 'INTRADAY') {
+              // Short sell — intraday only; create a short position
+              // Margin requirement: 20% of order value (simplified)
+              const marginRequired = orderValue * 0.2 + charges.total;
+              if (account) setAccount({ ...account, balance: account.balance - marginRequired });
+
+              const existingShort = MOCK_HOLDINGS.find(h => h.symbol === input.symbol && (h as any).isShort);
+              if (existingShort) {
+                const totalValue = (existingShort.quantity * existingShort.avgBuyPrice) + orderValue;
+                existingShort.quantity += input.quantity;
+                existingShort.avgBuyPrice = totalValue / existingShort.quantity;
+              } else {
+                MOCK_HOLDINGS.push({
+                  id: Math.random().toString(),
+                  symbol: input.symbol, exchange: input.exchange,
+                  companyName: input.companyName, quantity: input.quantity,
+                  avgBuyPrice: execPrice, currentPrice: execPrice,
+                  currentValue: orderValue, investedValue: orderValue,
+                  isShort: true, productType: 'INTRADAY',
+                } as any);
+              }
+            }
           }
         }
-        } // Close if (!isPending)
-        
         return mockOrder;
       }
 
       if (!user?.id) throw new Error('Not authenticated');
-
-      // Route through Supabase Edge Function for atomic execution
       const { data, error } = await supabase.functions.invoke('place-order', {
-        body: {
-          userId: user.id,
-          ...input,
-        },
+        body: { userId: user.id, ...input },
       });
       if (error) throw error;
       return data;

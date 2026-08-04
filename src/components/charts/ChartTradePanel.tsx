@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { X, Pin, ArrowLeftRight, ChevronDown, RefreshCw, Info } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Pin, ArrowLeftRight, ChevronDown, RefreshCw, Info, TrendingDown } from 'lucide-react';
 import { useMarketStore } from '../../store/marketStore';
 import { useQuote } from '../../hooks/useMarketData';
 import { usePortfolio } from '../../hooks/usePortfolio';
 import { usePlaceOrder } from '../../hooks/useOrders';
 import { validateOrder } from '../../utils/validators';
+import { calcCharges } from '../../utils/brokerageCalculator';
 import { Modal } from '../ui/Modal';
 import type { OrderSide, OrderType } from '../../types/trade';
 
@@ -38,11 +39,22 @@ export function ChartTradePanel({ initialSide = 'BUY', onClose, isInstantOrder }
     setSide(initialSide);
   }, [initialSide]);
 
-  const currentHolding = holdings.find(h => h.symbol === selectedSymbol);
+  const currentHolding = holdings.find(h => h.symbol === selectedSymbol && !(h as any).isShort);
   const marketPrice = quote?.ltp ?? 0;
-  
+
   const effectiveOrderType = activeTab === 'GTT' ? 'LIMIT' : orderType;
-  const estimatedCost = parseInt(quantity || '0') * (effectiveOrderType === 'MARKET' ? marketPrice : parseFloat(price || '0'));
+  const execPrice = effectiveOrderType === 'MARKET' ? marketPrice : parseFloat(price || '0');
+  const qty = parseInt(quantity || '0');
+  const estimatedCost = qty * execPrice;
+
+  // For intraday SELL with no holding = short sell
+  const isShortSell = side === 'SELL' && productType === 'INTRADAY' && (!currentHolding || currentHolding.quantity === 0);
+
+  // Calculate charges
+  const charges = useMemo(() => {
+    if (!execPrice || !qty) return null;
+    return calcCharges({ side, productType, quantity: qty, price: execPrice, exchange: selectedExchange });
+  }, [side, productType, qty, execPrice, selectedExchange]);
 
   useEffect(() => {
     if (effectiveOrderType !== 'MARKET' && marketPrice > 0 && !price) {
@@ -51,12 +63,14 @@ export function ChartTradePanel({ initialSide = 'BUY', onClose, isInstantOrder }
   }, [selectedSymbol, marketPrice, effectiveOrderType]);
 
   const validate = () => {
+    // For intraday short sells, skip the holding quantity check
+    const holdingQty = isShortSell ? 999999 : (currentHolding?.quantity ?? 0);
     const result = validateOrder({
       side, orderType: effectiveOrderType,
-      quantity: parseInt(quantity || '0'),
+      quantity: qty,
       price: parseFloat(price),
-      availableBalance: balance,
-      currentHoldings: currentHolding?.quantity ?? 0,
+      availableBalance: isShortSell ? balance : balance,
+      currentHoldings: holdingQty,
       marketPrice,
     });
     setErrors(result.errors);
@@ -392,17 +406,59 @@ export function ChartTradePanel({ initialSide = 'BUY', onClose, isInstantOrder }
 
       {/* Footer Area */}
       <div style={{ borderTop: '1px solid #E2E8F0', padding: '16px', background: '#FAFAFA' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, fontSize: 12 }}>
+        
+        {/* Short Sell Banner */}
+        {isShortSell && (
+          <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 6, padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <TrendingDown size={14} color="#EA580C" />
+            <span style={{ fontSize: 12, color: '#9A3412', fontWeight: 500, lineHeight: 1.4 }}>
+              <strong>Intraday Short Sell</strong> — Position will auto square-off at 3:15 PM IST. Margin: ~20% of order value.
+            </span>
+          </div>
+        )}
+
+        {/* Cost & Balance */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0F172A' }}>
-            <span style={{ color: '#5B21B6', fontWeight: 600 }}>Required:</span> 
-            <span style={{ fontWeight: 600 }}>₹ {estimatedCost.toFixed(2)}</span>
+            <span style={{ color: '#5B21B6', fontWeight: 600 }}>{isShortSell ? 'Margin:' : 'Required:'}</span>
+            <span style={{ fontWeight: 600 }}>₹ {isShortSell ? (estimatedCost * 0.2).toFixed(2) : estimatedCost.toFixed(2)}</span>
             <RefreshCw size={12} color="#64748B" cursor="pointer" />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0F172A' }}>
-            <span style={{ color: '#64748B' }}>Available:</span> 
+            <span style={{ color: '#64748B' }}>Available:</span>
             <span style={{ fontWeight: 600, color: estimatedCost > balance ? '#EF4444' : '#0F172A' }}>₹ {balance.toFixed(2)}</span>
           </div>
         </div>
+
+        {/* Charges Breakdown */}
+        {charges && charges.total > 0 && (
+          <details style={{ marginBottom: 12 }}>
+            <summary style={{ fontSize: 11, color: '#64748B', cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between' }}>
+              <span>Est. Charges <span style={{ color: '#475569', fontWeight: 600 }}>₹ {charges.total.toFixed(2)}</span></span>
+              <span style={{ color: '#94A3B8' }}>▼ Details</span>
+            </summary>
+            <div style={{ marginTop: 6, background: '#F8FAFC', borderRadius: 6, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {[
+                { label: 'Brokerage', value: charges.brokerage },
+                { label: 'STT', value: charges.stt },
+                { label: 'Exchange Txn', value: charges.exchangeTxnCharge },
+                { label: 'GST (18%)', value: charges.gst },
+                { label: 'Stamp Duty', value: charges.stampDuty },
+                { label: 'SEBI Charges', value: charges.sebiCharge },
+                ...(charges.dematDPCharge > 0 ? [{ label: 'Demat DP', value: charges.dematDPCharge }] : []),
+              ].map(row => (
+                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#475569' }}>
+                  <span>{row.label}</span>
+                  <span>₹ {row.value.toFixed(4)}</span>
+                </div>
+              ))}
+              <div style={{ borderTop: '1px solid #E2E8F0', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, color: '#0F172A' }}>
+                <span>Total Charges</span>
+                <span>₹ {charges.total.toFixed(2)}</span>
+              </div>
+            </div>
+          </details>
+        )}
 
         <button 
           onClick={handleSubmit}
@@ -415,15 +471,17 @@ export function ChartTradePanel({ initialSide = 'BUY', onClose, isInstantOrder }
             fontSize: 15,
             fontWeight: 700,
             cursor: placeOrder.isPending ? 'not-allowed' : 'pointer',
-            background: side === 'BUY' ? '#10B981' : '#EF4444',
+            background: isShortSell ? '#EA580C' : side === 'BUY' ? '#10B981' : '#EF4444',
             color: '#FFFFFF',
             opacity: placeOrder.isPending ? 0.7 : 1,
             display: 'flex',
             justifyContent: 'center',
-            alignItems: 'center'
+            alignItems: 'center',
+            gap: 8
           }}
         >
-          {placeOrder.isPending ? 'Processing...' : `Place ${side.toLowerCase()} order`}
+          {isShortSell && <TrendingDown size={16} />}
+          {placeOrder.isPending ? 'Processing...' : isShortSell ? 'Short Sell (Intraday)' : `Place ${side.toLowerCase()} order`}
         </button>
       </div>
 

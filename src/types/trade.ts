@@ -28,15 +28,17 @@ export interface Holding {
   symbol: string;
   exchange: 'NSE' | 'BSE';
   companyName: string;
-  quantity: number;
-  avgBuyPrice: number;
+  quantity: number;        // positive = long, negative = short
+  avgBuyPrice: number;     // avg entry price (for shorts: avg sell price)
   currentPrice?: number;
   currentValue?: number;
   investedValue: number;
   pnl?: number;
   pnlPct?: number;
-  tp?: number; // Take Profit
-  sl?: number; // Stop Loss
+  tp?: number;             // Take Profit
+  sl?: number;             // Stop Loss
+  isShort?: boolean;       // true if this is a short (sold before buying) intraday position
+  productType?: 'INTRADAY' | 'DELIVERY';
 }
 
 export interface Trade {

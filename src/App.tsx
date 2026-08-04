@@ -8,6 +8,7 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { useAuth } from './hooks/useAuth';
 import { useAuthStore } from './store/authStore';
 import { useAutoExecuteEngine } from './hooks/useAutoExecuteEngine';
+import { useAutoSquareOff } from './hooks/useAutoSquareOff';
 import './styles/globals.css';
 
 // Lazy-loaded pages for route-based code splitting
@@ -33,7 +34,6 @@ const More = lazy(() => import('./pages/More'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
-const TradeJournal = lazy(() => import('./pages/TradeJournal'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,6 +67,8 @@ function AppRoutes() {
   useAuth();
   // Initialize global auto-trader
   useAutoExecuteEngine();
+  // Initialize intraday auto square-off engine
+  useAutoSquareOff();
 
   return (
     <Suspense fallback={<FullPageSpinner />}>
@@ -103,7 +105,6 @@ function AppRoutes() {
           <Route path="/premium" element={<Premium />} />
           <Route path="/help" element={<Help />} />
           <Route path="/notifications" element={<Notifications />} />
-          <Route path="/journal" element={<TradeJournal />} />
         </Route>
 
         {/* Fallback */}
