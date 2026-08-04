@@ -33,6 +33,7 @@ const More = lazy(() => import('./pages/More'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TradeJournal = lazy(() => import('./pages/TradeJournal'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,6 +103,7 @@ function AppRoutes() {
           <Route path="/premium" element={<Premium />} />
           <Route path="/help" element={<Help />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/journal" element={<TradeJournal />} />
         </Route>
 
         {/* Fallback */}

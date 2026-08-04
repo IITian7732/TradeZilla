@@ -13,7 +13,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { Badge } from '../components/ui/Badge';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { formatINR, formatPct, formatPnL, formatRelativeTime } from '../utils/formatters';
-import { CTA, POPULAR_STOCKS } from '../utils/constants';
+import { CTA, POPULAR_STOCKS, INITIAL_BALANCE } from '../utils/constants';
 import { fetchNews } from '../api/news';
 import { useQuery } from '@tanstack/react-query';
 
@@ -38,7 +38,7 @@ export default function Dashboard() {
 
   const quotes = quotesQuery.data ?? [];
   const news = (newsQuery.data ?? []).slice(0, 3);
-  const portfolioReturn = ((totalPortfolioValue - 100000) / 100000) * 100;
+  const portfolioReturn = ((totalPortfolioValue - INITIAL_BALANCE) / INITIAL_BALANCE) * 100;
 
   return (
     <div style={{ padding: '16px 16px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>

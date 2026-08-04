@@ -8,6 +8,7 @@ import type { Order, OrderSide, OrderType } from '../types/trade';
 import { MOCK_HOLDINGS } from './usePortfolio';
 import { MOCK_STATS, MOCK_RECENT_TRADES } from './useTradingStats';
 import { calcWinRate } from '../utils/calculations';
+import { useTradeJournalStore } from '../store/tradeJournalStore';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === 'true' ||
   !import.meta.env.VITE_SUPABASE_URL;
@@ -134,6 +135,26 @@ export function usePlaceOrder() {
             } as any);
             
             MOCK_STATS.winRate = calcWinRate(MOCK_RECENT_TRADES as any) ?? 0;
+
+            // Auto-log to Trade Journal
+            const pnlPct = h.avgBuyPrice > 0 ? ((execPrice - h.avgBuyPrice) / h.avgBuyPrice) * 100 : 0;
+            useTradeJournalStore.getState().addEntry({
+              id: mockOrder.id,
+              symbol: input.symbol,
+              exchange: input.exchange,
+              companyName: input.companyName,
+              side: 'SELL',
+              quantity: input.quantity,
+              entryPrice: h.avgBuyPrice,
+              exitPrice: execPrice,
+              pnl,
+              pnlPct,
+              entryReason: '',
+              exitReason: '',
+              emotionTag: 'neutral',
+              lessons: '',
+              tradedAt: mockOrder.executedAt!,
+            });
           }
         }
         } // Close if (!isPending)

@@ -1,7 +1,7 @@
 // src/components/layout/BottomNav.tsx
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, BarChart2, Briefcase, Star, MoreHorizontal } from 'lucide-react';
+import { Home, BarChart2, Briefcase, BookOpen, MoreHorizontal } from 'lucide-react';
 
 interface NavItem {
   id: string;
@@ -11,11 +11,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'home', label: 'Home', icon: <Home size={22} />, path: '/dashboard' },
-  { id: 'charts', label: 'Charts', icon: <BarChart2 size={22} />, path: '/charts' },
-  { id: 'portfolio', label: 'Portfolio', icon: <Briefcase size={22} />, path: '/portfolio' },
-  { id: 'watchlist', label: 'Watchlist', icon: <Star size={22} />, path: '/watchlist' },
-  { id: 'more', label: 'More', icon: <MoreHorizontal size={22} />, path: '/more' },
+  { id: 'home',    label: 'Home',    icon: <Home size={22} />,          path: '/dashboard' },
+  { id: 'charts',  label: 'Charts',  icon: <BarChart2 size={22} />,     path: '/charts' },
+  { id: 'portfolio',label:'Portfolio',icon: <Briefcase size={22} />,    path: '/portfolio' },
+  { id: 'journal', label: 'Journal', icon: <BookOpen size={22} />,      path: '/journal' },
+  { id: 'more',    label: 'More',    icon: <MoreHorizontal size={22} />, path: '/more' },
 ];
 
 export const BottomNav: React.FC = () => {

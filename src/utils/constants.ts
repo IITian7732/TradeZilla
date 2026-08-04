@@ -34,7 +34,7 @@ export const MARKET_HOURS = {
 } as const;
 
 // Initial paper trading balance
-export const INITIAL_BALANCE = 100000; // ₹1,00,000
+export const INITIAL_BALANCE = 1000000; // ₹10,00,000
 
 // Polling intervals (ms)
 export const POLLING = {

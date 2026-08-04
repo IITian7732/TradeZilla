@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+    <div id="main" style="width: 600px; height: 300px;"></div>
+    <div id="osc" style="width: 600px; height: 100px;"></div>
+    <div id="time" style="width: 600px; height: 26px;"></div>
+    <script>
+        const chartMain = LightweightCharts.createChart(document.getElementById('main'), { timeScale: { visible: false } });
+        const seriesMain = chartMain.addLineSeries();
+        seriesMain.setData([{ time: '2020-01-01', value: 10 }, { time: '2020-01-02', value: 20 }]);
+
+        const chartTime = LightweightCharts.createChart(document.getElementById('time'), {
+            rightPriceScale: { visible: false },
+            crosshair: { mode: 0 }
+        });
+        const seriesTime = chartTime.addLineSeries({ visible: false, crosshairMarkerVisible: false, priceLineVisible: false });
+        seriesTime.setData([{ time: '2020-01-01', value: 0 }, { time: '2020-01-02', value: 0 }]);
+
+        chartMain.subscribeCrosshairMove(param => {
+            if (param.time) {
+                chartTime.setCrosshairPosition(0, param.time, seriesTime);
+            }
+        });
+    </script>
+</body>
+</html>
